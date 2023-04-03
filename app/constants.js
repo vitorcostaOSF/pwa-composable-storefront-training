@@ -90,3 +90,7 @@ export const TOAST_MESSAGE_REMOVED_FROM_WISHLIST = defineMessage({
     id: 'global.info.removed_from_wishlist',
     defaultMessage: 'Item removed from wishlist'
 })
+
+export const SITE_ID = 'RefArch';
+
+export const CLIENT_ID = '264f0d69-a6b7-4001-a2df-20d025275702'
