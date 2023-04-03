@@ -2,6 +2,7 @@ import React from 'react'
 import fetch from 'cross-fetch'
 
 import { CLIENT_ID, SITE_ID } from '../../constants'
+import {getAppOrigin} from 'pwa-kit-react-sdk/utils/url'
 
 const ContentDetails = ({ contentResult, error }) => {
     if (error) {
@@ -18,7 +19,7 @@ const ContentDetails = ({ contentResult, error }) => {
 ContentDetails.getProps = async ({ params, res }) => {
     let contentResult, error;
     const result = await fetch(
-        `http://localhost:3000/mobify/proxy/ocapi/s/${SITE_ID}/dw/shop/v20_2/content/${params.id}?client_id=${CLIENT_ID}`
+        `${getAppOrigin()}/mobify/proxy/ocapi/s/${SITE_ID}/dw/shop/v20_2/content/${params.id}?client_id=${CLIENT_ID}`
     )
 
     if (result.ok) {

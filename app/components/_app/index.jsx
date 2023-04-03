@@ -118,7 +118,7 @@ const App = (props) => {
         })
         const fetchStore = async () => {
             const res = await fetch(
-                `http://localhost:3000/mobify/proxy/ocapi/s/${SITE_ID}/dw/shop/v20_2/stores?latitude=${GEO_LOCATION.lat}&longitude=${GEO_LOCATION.long}&client_id=${CLIENT_ID}`
+                `${getAppOrigin}/mobify/proxy/ocapi/s/${SITE_ID}/dw/shop/v20_2/stores?latitude=${GEO_LOCATION.lat}&longitude=${GEO_LOCATION.long}&client_id=${CLIENT_ID}`
             )
             if (res.ok) {
                 const storeResult = await res.json()
@@ -378,7 +378,7 @@ Learn more with our localization guide. https://sfdc.co/localization-guide
 
     let privacyPolicy
     const result = await fetch(
-        `http://localhost:3000/mobify/proxy/ocapi/s/${SITE_ID}/dw/shop/v20_2/content/privacy-policy?client_id=${CLIENT_ID}`
+        `${getAppOrigin()}/mobify/proxy/ocapi/s/${SITE_ID}/dw/shop/v20_2/content/privacy-policy?client_id=${CLIENT_ID}`
     )
 
     if (result.ok) {
