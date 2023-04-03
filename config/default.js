@@ -61,6 +61,7 @@ module.exports = {
     ssrParameters: {
         ssrFunctionNodeVersion: '16.x',
         proxyConfigs: [
+            // Exercise 6 skipped as to not deploy and overwrite code in shared training environment
             {
                 host: 'kv7kzm78.api.commercecloud.salesforce.com',
                 path: 'api'

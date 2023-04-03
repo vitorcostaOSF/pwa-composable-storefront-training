@@ -12,6 +12,8 @@ import {useLocation} from 'react-router-dom'
 
 // Components
 import {
+    Alert,
+    AlertIcon,
     Box,
     Button,
     SimpleGrid,
@@ -44,6 +46,18 @@ import {
     HOME_SHOP_PRODUCTS_LIMIT
 } from '../../constants'
 
+const MyHeader = ({ name = "Stranger"}) => {
+    return (
+        <Box>
+            <h1 style={{color: 'gray'}}>Hello, {name}!</h1>
+            <Alert padding="10" status="info">
+                <AlertIcon />
+                Chakra UI components unlocked!
+            </Alert>
+        </Box>
+    )
+}
+
 /**
  * This is the home page for Retail React App.
  * The page is created for demonstration purposes.
@@ -67,6 +81,8 @@ const Home = ({productSearchResult, isLoading}) => {
                 description="Commerce Cloud Retail React App"
                 keywords="Commerce Cloud, Retail React App, React Storefront"
             />
+
+            <MyHeader name="Vitor Costa" />
 
             <Hero
                 title={intl.formatMessage({
