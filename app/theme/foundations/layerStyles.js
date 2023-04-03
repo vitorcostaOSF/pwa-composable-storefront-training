@@ -36,6 +36,7 @@ export default {
         width: '100%',
         maxWidth: 'container.xxxl',
         marginLeft: 'auto',
-        marginRight: 'auto'
+        marginRight: 'auto',
+        backgroundColor: 'lightblue'
     }
 }
