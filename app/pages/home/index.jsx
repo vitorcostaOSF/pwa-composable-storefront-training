@@ -44,6 +44,10 @@ import {
     HOME_SHOP_PRODUCTS_LIMIT
 } from '../../constants'
 
+const MyHeader = () => {
+    return <h1>Hello from custom component</h1>
+}
+
 /**
  * This is the home page for Retail React App.
  * The page is created for demonstration purposes.
@@ -67,6 +71,8 @@ const Home = ({productSearchResult, isLoading}) => {
                 description="Commerce Cloud Retail React App"
                 keywords="Commerce Cloud, Retail React App, React Storefront"
             />
+
+            <MyHeader />
 
             <Hero
                 title={intl.formatMessage({
