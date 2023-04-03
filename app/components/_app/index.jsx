@@ -7,6 +7,7 @@
 
 import React, {useState, useEffect} from 'react'
 import PropTypes from 'prop-types'
+import fetch from 'cross-fetch'
 import {useHistory, useLocation} from 'react-router-dom'
 import {getAssetUrl} from 'pwa-kit-react-sdk/ssr/universal/utils'
 import {getAppOrigin} from 'pwa-kit-react-sdk/utils/url'
@@ -49,7 +50,9 @@ import {
     THEME_COLOR,
     CAT_MENU_DEFAULT_NAV_DEPTH,
     CAT_MENU_DEFAULT_ROOT_CATEGORY,
-    DEFAULT_LOCALE
+    DEFAULT_LOCALE,
+    SITE_ID,
+    CLIENT_ID
 } from '../../constants'
 
 import Seo from '../seo'
@@ -61,7 +64,8 @@ const App = (props) => {
         children,
         targetLocale = DEFAULT_LOCALE,
         messages = {},
-        categories: allCategories = {}
+        categories: allCategories = {},
+        privacyPolicy
     } = props
 
     const appOrigin = getAppOrigin()
@@ -257,6 +261,10 @@ const App = (props) => {
 
                                 {!isCheckout ? <Footer /> : <CheckoutFooter />}
 
+                                {privacyPolicy && (
+                                    <div dangerouslySetInnerHTML={{__html: privacyPolicy.c_body}} />
+                                )}
+
                                 <AuthModal {...authModal} />
                             </AddToCartModalProvider>
                         </Box>
@@ -327,10 +335,20 @@ Learn more with our localization guide. https://sfdc.co/localization-guide
     // the application.
     const categories = {root: flatten(rootCategory, 'categories').root}
 
+    let privacyPolicy
+    const result = await fetch(
+        `http://localhost:3000/mobify/proxy/ocapi/s/${SITE_ID}/dw/shop/v20_2/content/privacy-policy?client_id=${CLIENT_ID}`
+    )
+
+    if (result.ok) {
+        privacyPolicy = await result.json()
+    }
+
     return {
         targetLocale,
         messages,
         categories,
+        privacyPolicy,
         config: res?.locals?.config
     }
 }
@@ -340,7 +358,8 @@ App.propTypes = {
     targetLocale: PropTypes.string,
     messages: PropTypes.object,
     categories: PropTypes.object,
-    config: PropTypes.object
+    config: PropTypes.object,
+    privacyPolicy: PropTypes.object
 }
 
 export default App
