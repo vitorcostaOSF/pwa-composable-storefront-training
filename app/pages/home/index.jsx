@@ -44,8 +44,8 @@ import {
     HOME_SHOP_PRODUCTS_LIMIT
 } from '../../constants'
 
-const MyHeader = () => {
-    return <h1>Hello from custom component</h1>
+const MyHeader = ({ name = "Stranger"}) => {
+    return <h1>Hello, {name}!</h1>
 }
 
 /**
@@ -72,7 +72,7 @@ const Home = ({productSearchResult, isLoading}) => {
                 keywords="Commerce Cloud, Retail React App, React Storefront"
             />
 
-            <MyHeader />
+            <MyHeader name="Vitor Costa" />
 
             <Hero
                 title={intl.formatMessage({
