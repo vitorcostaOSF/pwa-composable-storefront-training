@@ -35,7 +35,8 @@ import {
     DrawerHeader,
     DrawerOverlay,
     DrawerContent,
-    DrawerCloseButton
+    DrawerCloseButton,
+    Spinner
 } from '@chakra-ui/react'
 
 // Project Components
@@ -56,6 +57,7 @@ import {useToast} from '../../hooks/use-toast'
 import useWishlist from '../../hooks/use-wishlist'
 import {parse as parseSearchParams} from '../../hooks/use-search-params'
 import useEinstein from '../../commerce-api/hooks/useEinstein'
+import { useCommerceAPI } from '../../commerce-api/contexts'
 
 // Others
 import {HTTPNotFound} from 'pwa-kit-react-sdk/ssr/universal/errors'
@@ -84,7 +86,7 @@ const REFINEMENT_DISALLOW_LIST = ['c_isNew']
 const ProductList = (props) => {
     const {
         searchQuery,
-        productSearchResult,
+        productSearchResultInitial,
         category,
         // eslint-disable-next-line react/prop-types
         staticContext,
@@ -92,8 +94,10 @@ const ProductList = (props) => {
         isLoading,
         ...rest
     } = props
+    const [productSearchResult, setProductSearchResult] = useState({})
     const {total, sortingOptions} = productSearchResult || {}
     const {isOpen, onOpen, onClose} = useDisclosure()
+    const [isLoadingMore, setLoadingMoreState] = useState(false)
     const [sortOpen, setSortOpen] = useState(false)
     const {formatMessage} = useIntl()
     const navigate = useNavigation()
@@ -101,6 +105,7 @@ const ProductList = (props) => {
     const params = useParams()
     const toast = useToast()
     const einstein = useEinstein()
+    const api = useCommerceAPI()
 
     const basePath = `${location.pathname}${location.search}`
     // Reset scroll position when `isLoaded` becomes `true`.
@@ -108,6 +113,11 @@ const ProductList = (props) => {
         isLoading && window.scrollTo(0, 0)
         setFiltersLoading(isLoading)
     }, [isLoading])
+
+    //Startup the state of the productSearchResult
+    useEffect(() => {
+        setProductSearchResult(productSearchResultInitial || {});
+    }, [productSearchResultInitial])
 
     // Get urls to be used for pagination, page size changes, and sorting.
     const pageUrls = usePageUrls({total})
@@ -226,6 +236,41 @@ const ProductList = (props) => {
         } else {
             navigate(`/search?${stringifySearchParams(searchParamsCopy)}`)
         }
+    }
+
+    // On click of the Load More button, request the next products from the list
+    const loadMoreProducts = () => {
+        console.log(productSearchResult)
+
+        if (productSearchResult.offset + productSearchResult.limit >= productSearchResult.total) {
+            //Already loaded all the elements
+            return
+        }
+
+        setLoadingMoreState(true)
+        // const searchParams = parseSearchParams(location.search, false)
+        const loadMoreParams = Object.assign({}, searchParams)
+        loadMoreParams.offset = productSearchResult.offset + productSearchResult.limit
+
+        if(loadMoreParams.refine && Object.keys(loadMoreParams.refine).length === 0 && loadMoreParams.refine.constructor === Object && category) {
+            loadMoreParams.refine = [`cgid=${category.id}`]
+        } else if (loadMoreParams.refine && !loadMoreParams.refine?.includes(`cgid=${category}`) && category) {
+            loadMoreParams.refine.push(`cgid=${category.id}`)
+        }
+
+        api.shopperSearch.productSearch({
+            parameters: loadMoreParams
+        }).then((moreProducts) => {
+            const newResearchResult = Object.assign({}, productSearchResult)
+            newResearchResult.hits.push(...moreProducts.hits);
+            newResearchResult.offset = moreProducts.offset;
+            newResearchResult.refinements = moreProducts.refinements;
+            setProductSearchResult(newResearchResult)
+        }).catch((error) => {
+            console.error('error', error)
+        }).finally(() => {
+            setLoadingMoreState(false)
+        })
     }
 
     // Clears all filters
@@ -431,7 +476,9 @@ const ProductList = (props) => {
                                 justifyContent={['center', 'center', 'flex-start']}
                                 paddingTop={8}
                             >
-                                <Pagination currentURL={basePath} urls={pageUrls} />
+                                {isLoadingMore && <Spinner />}
+                                <Button onClick={loadMoreProducts}>Show More</Button>
+                                {/*<Pagination currentURL={basePath} urls={pageUrls} />*/}
 
                                 {/*
                             Our design doesn't call for a page size select. Show this element if you want
@@ -618,7 +665,7 @@ ProductList.getProps = async ({res, params, location, api}) => {
         throw new HTTPNotFound(category.detail)
     }
 
-    return {searchQuery: searchQuery, productSearchResult, category}
+    return {searchQuery: searchQuery, productSearchResultInitial: productSearchResult, category}
 }
 
 ProductList.propTypes = {
@@ -626,7 +673,7 @@ ProductList.propTypes = {
      * The search result object showing all the product hits, that belong
      * in the supplied category.
      */
-    productSearchResult: PropTypes.object,
+    productSearchResultInitial: PropTypes.object,
     /*
      * Indicated that `getProps` has been called but has yet to complete.
      *
