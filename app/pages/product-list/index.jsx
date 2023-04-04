@@ -35,7 +35,8 @@ import {
     DrawerHeader,
     DrawerOverlay,
     DrawerContent,
-    DrawerCloseButton
+    DrawerCloseButton,
+    Spinner
 } from '@chakra-ui/react'
 
 // Project Components
@@ -46,6 +47,7 @@ import Refinements from './partials/refinements'
 import SelectedRefinements from './partials/selected-refinements'
 import EmptySearchResults from './partials/empty-results'
 import PageHeader from './partials/page-header'
+import ProductViewModal from '../../components/product-view-modal';
 
 // Icons
 import {FilterIcon, ChevronDownIcon} from '../../components/icons'
@@ -56,6 +58,7 @@ import {useToast} from '../../hooks/use-toast'
 import useWishlist from '../../hooks/use-wishlist'
 import {parse as parseSearchParams} from '../../hooks/use-search-params'
 import useEinstein from '../../commerce-api/hooks/useEinstein'
+import { useCommerceAPI } from '../../commerce-api/contexts'
 
 // Others
 import {HTTPNotFound} from 'pwa-kit-react-sdk/ssr/universal/errors'
@@ -71,6 +74,7 @@ import {
 } from '../../constants'
 import useNavigation from '../../hooks/use-navigation'
 import LoadingSpinner from '../../components/loading-spinner'
+import useBasket from '../../commerce-api/hooks/useBasket'
 
 // NOTE: You can ignore certain refinements on a template level by updating the below
 // list of ignored refinements.
@@ -84,7 +88,7 @@ const REFINEMENT_DISALLOW_LIST = ['c_isNew']
 const ProductList = (props) => {
     const {
         searchQuery,
-        productSearchResult,
+        productSearchResultInitial,
         category,
         // eslint-disable-next-line react/prop-types
         staticContext,
@@ -92,15 +96,21 @@ const ProductList = (props) => {
         isLoading,
         ...rest
     } = props
+    const [productSearchResult, setProductSearchResult] = useState({})
     const {total, sortingOptions} = productSearchResult || {}
     const {isOpen, onOpen, onClose} = useDisclosure()
+    const [isLoadingMore, setLoadingMoreState] = useState(false)
     const [sortOpen, setSortOpen] = useState(false)
+    const [quickView, setQuickViewState] = useState();
+    const [isQuickViewLoading, setQuickViewLoading] = useState(false);
+    const basket = useBasket()
     const {formatMessage} = useIntl()
     const navigate = useNavigation()
     const history = useHistory()
     const params = useParams()
     const toast = useToast()
     const einstein = useEinstein()
+    const api = useCommerceAPI()
 
     const basePath = `${location.pathname}${location.search}`
     // Reset scroll position when `isLoaded` becomes `true`.
@@ -108,6 +118,11 @@ const ProductList = (props) => {
         isLoading && window.scrollTo(0, 0)
         setFiltersLoading(isLoading)
     }, [isLoading])
+
+    //Startup the state of the productSearchResult
+    useEffect(() => {
+        setProductSearchResult(productSearchResultInitial || {});
+    }, [productSearchResultInitial])
 
     // Get urls to be used for pagination, page size changes, and sorting.
     const pageUrls = usePageUrls({total})
@@ -225,6 +240,75 @@ const ProductList = (props) => {
             navigate(`/category/${params.categoryId}?${stringifySearchParams(searchParamsCopy)}`)
         } else {
             navigate(`/search?${stringifySearchParams(searchParamsCopy)}`)
+        }
+    }
+
+    // On click of the Load More button, request the next products from the list
+    const loadMoreProducts = () => {
+        console.log(productSearchResult)
+
+        if (productSearchResult.offset + productSearchResult.limit >= productSearchResult.total) {
+            //Already loaded all the elements
+            return
+        }
+
+        setLoadingMoreState(true)
+        // const searchParams = parseSearchParams(location.search, false)
+        const loadMoreParams = Object.assign({}, searchParams)
+        loadMoreParams.offset = productSearchResult.offset + productSearchResult.limit
+
+        if(loadMoreParams.refine && Object.keys(loadMoreParams.refine).length === 0 && loadMoreParams.refine.constructor === Object && category) {
+            loadMoreParams.refine = [`cgid=${category.id}`]
+        } else if (loadMoreParams.refine && !loadMoreParams.refine?.includes(`cgid=${category}`) && category) {
+            loadMoreParams.refine.push(`cgid=${category.id}`)
+        }
+
+        api.shopperSearch.productSearch({
+            parameters: loadMoreParams
+        }).then((moreProducts) => {
+            const newResearchResult = Object.assign({}, productSearchResult)
+            newResearchResult.hits.push(...moreProducts.hits);
+            newResearchResult.offset = moreProducts.offset;
+            newResearchResult.refinements = moreProducts.refinements;
+            setProductSearchResult(newResearchResult)
+        }).catch((error) => {
+            console.error('error', error)
+        }).finally(() => {
+            setLoadingMoreState(false)
+        })
+    }
+
+    const handleQuickViewOpening = async (productID) => {
+        setQuickViewLoading(true)
+        try {
+            const quickViewProduct = await api.shopperProducts.getProduct({
+                parameters: {
+                    id: productID,
+                    allImages: true
+                }
+            })
+            setQuickViewState(quickViewProduct);
+        } catch(error){
+            console.error('error', error)
+        }
+        setQuickViewLoading(false)
+    }
+
+    const handleAddToCart = async (productSelectionValues) => {
+        try {
+            const productItems = productSelectionValues.map(({variant, quantity}) => ({
+                productId: variant.productId,
+                price: variant.price,
+                quantity
+            }))
+
+            await basket.addItemToBasket(productItems)
+
+            // If the items were sucessfully added, set the return value to be used
+            // by the add to cart modal.
+            return productSelectionValues
+        } catch (error) {
+            console.error('error', error)
         }
     }
 
@@ -393,6 +477,7 @@ const ProductList = (props) => {
                                                   key={productSearchItem.productId}
                                                   product={productSearchItem}
                                                   enableFavourite={true}
+                                                  openQuickView={handleQuickViewOpening}
                                                   isFavourite={isInWishlist}
                                                   onClick={() => {
                                                       if (searchQuery) {
@@ -431,7 +516,9 @@ const ProductList = (props) => {
                                 justifyContent={['center', 'center', 'flex-start']}
                                 paddingTop={8}
                             >
-                                <Pagination currentURL={basePath} urls={pageUrls} />
+                                {isLoadingMore && <Spinner />}
+                                <Button onClick={loadMoreProducts}>Show More</Button>
+                                {/*<Pagination currentURL={basePath} urls={pageUrls} />*/}
 
                                 {/*
                             Our design doesn't call for a page size select. Show this element if you want
@@ -455,6 +542,16 @@ const ProductList = (props) => {
                     </Grid>
                 </>
             )}
+
+            {isQuickViewLoading && <LoadingSpinner />}
+            {quickView && <ProductViewModal
+                isOpen={!!quickView}
+                onOpen={() => {}}
+                onClose={() => setQuickViewState(null)}
+                product={quickView}
+                addToCart={(variant, quantity) => handleAddToCart([{product: quickView, variant, quantity}])}
+            />}
+
             <Modal
                 isOpen={isOpen}
                 onClose={onClose}
@@ -618,7 +715,7 @@ ProductList.getProps = async ({res, params, location, api}) => {
         throw new HTTPNotFound(category.detail)
     }
 
-    return {searchQuery: searchQuery, productSearchResult, category}
+    return {searchQuery: searchQuery, productSearchResultInitial: productSearchResult, category}
 }
 
 ProductList.propTypes = {
@@ -626,7 +723,7 @@ ProductList.propTypes = {
      * The search result object showing all the product hits, that belong
      * in the supplied category.
      */
-    productSearchResult: PropTypes.object,
+    productSearchResultInitial: PropTypes.object,
     /*
      * Indicated that `getProps` has been called but has yet to complete.
      *

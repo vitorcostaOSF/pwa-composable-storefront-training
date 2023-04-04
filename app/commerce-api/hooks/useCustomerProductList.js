@@ -77,6 +77,18 @@ const useCustomerProductList = (name, type) => {
              *
              * @param {string} itemId the id of the item in the product list
              */
+            isItemOnList: async (itemId) => {
+                if (!self.isInitialized) {
+                    await self.init()
+                }
+                return cpl.findItemByProductId(self.data.id, itemId);
+            },
+
+            /**
+             * Remove an item from a customer product list
+             *
+             * @param {string} itemId the id of the item in the product list
+             */
             removeListItem: (itemId) => {
                 return cpl.removeListItem(self.data.id, itemId)
             },

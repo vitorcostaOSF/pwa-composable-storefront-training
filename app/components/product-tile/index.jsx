@@ -17,7 +17,8 @@ import {
     Text,
     Stack,
     useMultiStyleConfig,
-    IconButton
+    IconButton,
+    Button
 } from '@chakra-ui/react'
 import DynamicImage from '../dynamic-image'
 
@@ -29,6 +30,8 @@ import {productUrlBuilder} from '../../utils/url'
 import Link from '../link'
 import withRegistration from '../../hoc/with-registration'
 import {useCurrency} from '../../hooks'
+import SwatchGroup from '../swatch-group'
+import Swatch from '../swatch-group/swatch'
 
 const IconButtonWithRegistration = withRegistration(IconButton)
 
@@ -60,13 +63,14 @@ const ProductTile = (props) => {
     const {
         product,
         enableFavourite = false,
+        openQuickView,
         isFavourite,
         onFavouriteToggle,
         dynamicImageProps,
         ...rest
     } = props
 
-    const {currency, image, price, productId, hitType} = product
+    const {currency, image, price, productId, hitType, variationAttributes} = product
 
     // ProductTile is used by two components, RecommendedProducts and ProductList.
     // RecommendedProducts provides a localized product name as `name` and non-localized product
@@ -77,6 +81,7 @@ const ProductTile = (props) => {
     const {currency: activeCurrency} = useCurrency()
     const [isFavouriteLoading, setFavouriteLoading] = useState(false)
     const styles = useMultiStyleConfig('ProductTile')
+    const colorSwatches = variationAttributes?.find(varAttr => varAttr.id === 'color');
 
     return (
         <Link
@@ -98,6 +103,8 @@ const ProductTile = (props) => {
                         />
                     </AspectRatio>
                 )}
+
+                <Button type="button" sx={{position: 'absolute', top: '0', left: '0'}} onClick={(e) => { e.preventDefault(); openQuickView(productId) }}>Quick View</Button>
 
                 {enableFavourite && (
                     <Box
@@ -141,6 +148,53 @@ const ProductTile = (props) => {
                     currency: currency || activeCurrency
                 })}
             </Text>
+
+            {colorSwatches &&
+                <SwatchGroup
+                    key={colorSwatches.id}
+                    onChange={(_, href) => {
+                        if (!href) return
+                        history.replace(href)
+                    }}
+                    variant={'circle'}
+                    value={colorSwatches.selectedValue?.value}
+                    displayName={colorSwatches.selectedValue?.name || ''}
+                    label={colorSwatches.name}
+                >
+                    {(colorSwatches.values || []).map(
+                        ({href, name, image, value, orderable}) => (
+                            <Swatch
+                                key={value}
+                                href={href}
+                                disabled={!orderable}
+                                value={value}
+                                name={name}
+                            >
+                                {image ? (
+                                    <Box
+                                        height="100%"
+                                        width="100%"
+                                        minWidth="32px"
+                                        backgroundRepeat="no-repeat"
+                                        backgroundSize="cover"
+                                        backgroundColor={name.toLowerCase()}
+                                        backgroundImage={
+                                            image
+                                                ? `url(${
+                                                    image.disBaseLink ||
+                                                    image.link
+                                                })`
+                                                : ''
+                                        }
+                                    />
+                                ) : (
+                                    name
+                                )}
+                            </Swatch>
+                        )
+                    )}
+                </SwatchGroup>
+            }
         </Link>
     )
 }
@@ -180,6 +234,10 @@ ProductTile.propTypes = {
      * Use case: wishlist.
      */
     enableFavourite: PropTypes.bool,
+    /**
+     * Opens the quick view modal for this product tile
+     */
+    openQuickView: PropTypes.func,
     /**
      * Display the product as a faviourite.
      */

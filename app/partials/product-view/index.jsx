@@ -26,6 +26,7 @@ import {Skeleton as ImageGallerySkeleton} from '../../components/image-gallery'
 import {HideOnDesktop, HideOnMobile} from '../../components/responsive'
 import QuantityPicker from '../../components/quantity-picker'
 import { useCommerceAPI } from '../../commerce-api/contexts'
+import useWishlist from '../../hooks/use-wishlist'
 
 const ProductViewHeader = ({name, price, currency, category, productType}) => {
     const intl = useIntl()
@@ -88,6 +89,7 @@ const ProductView = forwardRef(
             addToCart,
             updateCart,
             addToWishlist,
+            removeFromWishlist,
             updateWishlist,
             isProductLoading,
             isProductPartOfSet = false,
@@ -124,8 +126,22 @@ const ProductView = forwardRef(
         const isProductASet = product?.type.set
         const errorContainerRef = useRef(null)
         const [promotionMap, setPromotionMap] = useState({})
+        const [isOnWishlist, setWishilistState] = useState()
         const productPromotions = product?.productPromotions || []
         const api = useCommerceAPI()
+        const wishlist = useWishlist()
+
+        useEffect(() => {
+            handleWishListStateUpdate(variant?.productId || product?.id);
+        },[])
+
+        const handleWishListStateUpdate = async (itemId) => {
+            if(itemId) {
+                const itemOnList = await wishlist.isItemOnList(itemId)
+                console.log('itemOnList', itemOnList)
+                setWishilistState(itemOnList)
+            }
+        }
 
         const handlePromotionHover = (id) => {
             // Don't make a network request if you already loaded this data
@@ -179,6 +195,10 @@ const ProductView = forwardRef(
                     defaultMessage: 'Add to Wishlist',
                     id: 'product_view.button.add_to_wishlist'
                 }),
+                removeFromWishlist: intl.formatMessage({
+                    defaultMessage: 'Remove from Wishlist',
+                    id: 'product_view.button.removed_from_wishlist'
+                }),
                 addSetToWishlist: intl.formatMessage({
                     defaultMessage: 'Add Set to Wishlist',
                     id: 'product_view.button.add_set_to_wishlist'
@@ -208,10 +228,19 @@ const ProductView = forwardRef(
             const handleWishlistItem = async () => {
                 if (!updateWishlist && !addToWishlist) return null
                 if (updateWishlist) {
-                    updateWishlist(product, variant, quantity)
+                    await updateWishlist(product, variant, quantity)
+                    handleWishListStateUpdate(product?.id)
                     return
                 }
-                addToWishlist(product, variant, quantity)
+                await addToWishlist(product, variant, quantity)
+                handleWishListStateUpdate(variant?.productId || product?.id)
+            }
+
+            const handleRemoveWishlistItem = async () => {
+                if(!removeFromWishlist) return null
+
+                await removeFromWishlist(product, variant)
+                handleWishListStateUpdate(variant?.productId || product?.id)
             }
 
             if (addToCart || updateCart) {
@@ -237,14 +266,16 @@ const ProductView = forwardRef(
                 buttons.push(
                     <ButtonWithRegistration
                         key="wishlist-button"
-                        onClick={handleWishlistItem}
+                        onClick={isOnWishlist ? handleRemoveWishlistItem : handleWishlistItem}
                         disabled={isWishlistLoading || !canAddToWishlist}
                         isLoading={isWishlistLoading}
                         width="100%"
                         variant="outline"
                         marginBottom={4}
                     >
-                        {updateWishlist
+                       {isOnWishlist
+                            ? buttonText.removeFromWishlist
+                            : updateWishlist
                             ? buttonText.update
                             : isProductASet
                             ? buttonText.addSetToWishlist
@@ -544,6 +575,7 @@ ProductView.propTypes = {
     isWishlistLoading: PropTypes.bool,
     addToCart: PropTypes.func,
     addToWishlist: PropTypes.func,
+    removeFromWishlist: PropTypes.func,
     updateCart: PropTypes.func,
     updateWishlist: PropTypes.func,
     showFullLink: PropTypes.bool,
