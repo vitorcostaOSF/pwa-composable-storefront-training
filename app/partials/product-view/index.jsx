@@ -10,7 +10,7 @@ import PropTypes from 'prop-types'
 import {useHistory, useLocation} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 
-import {Flex, Heading, Button, Skeleton, Box, Text, VStack, Fade, useTheme} from '@chakra-ui/react'
+import {Flex, Heading, Button, Skeleton, Box, Text, VStack, Fade, useTheme, Tooltip} from '@chakra-ui/react'
 import {useProduct} from '../../hooks'
 import {useAddToCartModalContext} from '../../hooks/use-add-to-cart-modal'
 
@@ -81,6 +81,7 @@ const ProductView = forwardRef(
         {
             product,
             category,
+            promotions,
             showFullLink = false,
             imageSize = 'md',
             isWishlistLoading = false,
@@ -432,6 +433,17 @@ const ProductView = forwardRef(
                                         }}
                                     />
                                 </VStack>
+                            )}
+                            {/* Show Promotions: promotions.data is the array to loop over */}
+                            {promotions && (
+                                <Box>
+                                    <Text>Available Promotions:</Text>
+                                    {promotions.data.map(({id, calloutMsg, details}) => (
+                                        <Tooltip key={id} label={details} aria-label="Promotion details">
+                                            <Text>{calloutMsg}</Text>
+                                        </Tooltip>
+                                    ))}
+                                </Box>
                             )}
                             <Box ref={errorContainerRef}>
                                 {!showLoading && showOptionsMessage && (
