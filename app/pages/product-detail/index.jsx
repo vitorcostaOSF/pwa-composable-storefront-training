@@ -33,7 +33,8 @@ import {
     API_ERROR_MESSAGE,
     MAX_CACHE_AGE,
     TOAST_ACTION_VIEW_WISHLIST,
-    TOAST_MESSAGE_ADDED_TO_WISHLIST
+    TOAST_MESSAGE_ADDED_TO_WISHLIST,
+    TOAST_MESSAGE_REMOVED_FROM_WISHLIST
 } from '../../constants'
 import {rebuildPathWithParams} from '../../utils/url'
 import {useHistory} from 'react-router-dom'
@@ -86,6 +87,32 @@ const ProductDetail = ({category, product, isLoading}) => {
             toast({
                 title: formatMessage(TOAST_MESSAGE_ADDED_TO_WISHLIST, {quantity: 1}),
                 status: 'success',
+                action: (
+                    // it would be better if we could use <Button as={Link}>
+                    // but unfortunately the Link component is not compatible
+                    // with Chakra Toast, since the ToastManager is rendered via portal
+                    // and the toast doesn't have access to intl provider, which is a
+                    // requirement of the Link component.
+                    <Button variant="link" onClick={() => navigate('/account/wishlist')}>
+                        {formatMessage(TOAST_ACTION_VIEW_WISHLIST)}
+                    </Button>
+                )
+            })
+        } catch {
+            toast({
+                title: formatMessage(API_ERROR_MESSAGE),
+                status: 'error'
+            })
+        }
+    }
+
+    const removeFromWishlist = async (product, variant) => {
+        try {
+            await wishlist.removeListItemByProductId(variant?.productId || product?.id)
+
+            toast({
+                title: formatMessage(TOAST_MESSAGE_REMOVED_FROM_WISHLIST),
+                status: 'info',
                 action: (
                     // it would be better if we could use <Button as={Link}>
                     // but unfortunately the Link component is not compatible
@@ -238,6 +265,9 @@ const ProductDetail = ({category, product, isLoading}) => {
                                         addToWishlist={(product, variant, quantity) =>
                                             handleAddToWishlist(product, variant, quantity)
                                         }
+                                        removeFromWishlist={(product, variant, quantity) =>
+                                            removeFromWishlist(product, variant, quantity)
+                                        }
                                         onVariantSelected={(product, variant, quantity) => {
                                             if (quantity) {
                                                 setProductSetSelection((previousState) => ({
@@ -276,6 +306,9 @@ const ProductDetail = ({category, product, isLoading}) => {
                             }
                             addToWishlist={(product, variant, quantity) =>
                                 handleAddToWishlist(product, variant, quantity)
+                            }
+                            removeFromWishlist={(product, variant, quantity) =>
+                                removeFromWishlist(product, variant, quantity)
                             }
                             isProductLoading={isLoading}
                             isCustomerProductListLoading={!wishlist.isInitialized}
