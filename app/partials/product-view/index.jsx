@@ -10,7 +10,7 @@ import PropTypes from 'prop-types'
 import {useHistory, useLocation} from 'react-router-dom'
 import {useIntl} from 'react-intl'
 
-import {Flex, Heading, Button, Skeleton, Box, Text, VStack, Fade, useTheme} from '@chakra-ui/react'
+import {Flex, Heading, Button, Skeleton, Box, Text, VStack, Fade, useTheme, Tooltip, Spinner} from '@chakra-ui/react'
 import {useProduct} from '../../hooks'
 import {useAddToCartModalContext} from '../../hooks/use-add-to-cart-modal'
 
@@ -25,6 +25,7 @@ import {useCurrency} from '../../hooks'
 import {Skeleton as ImageGallerySkeleton} from '../../components/image-gallery'
 import {HideOnDesktop, HideOnMobile} from '../../components/responsive'
 import QuantityPicker from '../../components/quantity-picker'
+import { useCommerceAPI } from '../../commerce-api/contexts'
 
 const ProductViewHeader = ({name, price, currency, category, productType}) => {
     const intl = useIntl()
@@ -122,6 +123,23 @@ const ProductView = forwardRef(
         const canAddToWishlist = !isProductLoading
         const isProductASet = product?.type.set
         const errorContainerRef = useRef(null)
+        const [promotionMap, setPromotionMap] = useState({})
+        const productPromotions = product?.productPromotions || []
+        const api = useCommerceAPI()
+
+        const handlePromotionHover = (id) => {
+            // Don't make a network request if you already loaded this data
+            if (promotionMap[id]) {
+                return
+            }
+            const getPromotion = async (id) => {
+                const promotions = await api.shopperPromotions.getPromotions({
+                    parameters: {ids: id}
+                })
+                setPromotionMap({...promotionMap, [id]: promotions.data[0]})
+            }
+            getPromotion(id)
+        }
 
         const validateAndShowError = (opts = {}) => {
             const {scrollErrorIntoView = true} = opts
@@ -433,6 +451,24 @@ const ProductView = forwardRef(
                                     />
                                 </VStack>
                             )}
+                            {/* Show Promotions: productPromotions is the array to loop over */}
+                            <Text>Available promotions:</Text>
+                            {productPromotions &&
+                                productPromotions.map(({promotionId, calloutMsg}) => (
+                                    <Tooltip
+                                        onOpen={() => {
+                                            handlePromotionHover(promotionId)
+                                        }}
+                                        key={promotionId}
+                                        label={
+                                            (promotionMap[promotionId] && promotionMap[promotionId].details) || (<Spinner/>)
+                                        }
+                                        aria-label="Promotion details"
+                                    >
+                                        <Text>{calloutMsg}</Text>
+                                    </Tooltip>
+                                ))
+                            }
                             <Box ref={errorContainerRef}>
                                 {!showLoading && showOptionsMessage && (
                                     <Fade in={true}>
