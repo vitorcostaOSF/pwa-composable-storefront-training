@@ -17,7 +17,8 @@ import {
     Text,
     Stack,
     useMultiStyleConfig,
-    IconButton
+    IconButton,
+    Button
 } from '@chakra-ui/react'
 import DynamicImage from '../dynamic-image'
 
@@ -60,6 +61,7 @@ const ProductTile = (props) => {
     const {
         product,
         enableFavourite = false,
+        openQuickView,
         isFavourite,
         onFavouriteToggle,
         dynamicImageProps,
@@ -98,6 +100,8 @@ const ProductTile = (props) => {
                         />
                     </AspectRatio>
                 )}
+
+                <Button type="button" sx={{position: 'absolute', top: '0', left: '0'}} onClick={(e) => { e.preventDefault(); openQuickView(productId) }}>Quick View</Button>
 
                 {enableFavourite && (
                     <Box
@@ -180,6 +184,10 @@ ProductTile.propTypes = {
      * Use case: wishlist.
      */
     enableFavourite: PropTypes.bool,
+    /**
+     * Opens the quick view modal for this product tile
+     */
+    openQuickView: PropTypes.func,
     /**
      * Display the product as a faviourite.
      */

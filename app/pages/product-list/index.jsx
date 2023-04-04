@@ -47,6 +47,7 @@ import Refinements from './partials/refinements'
 import SelectedRefinements from './partials/selected-refinements'
 import EmptySearchResults from './partials/empty-results'
 import PageHeader from './partials/page-header'
+import ProductViewModal from '../../components/product-view-modal';
 
 // Icons
 import {FilterIcon, ChevronDownIcon} from '../../components/icons'
@@ -73,6 +74,7 @@ import {
 } from '../../constants'
 import useNavigation from '../../hooks/use-navigation'
 import LoadingSpinner from '../../components/loading-spinner'
+import useBasket from '../../commerce-api/hooks/useBasket'
 
 // NOTE: You can ignore certain refinements on a template level by updating the below
 // list of ignored refinements.
@@ -99,6 +101,9 @@ const ProductList = (props) => {
     const {isOpen, onOpen, onClose} = useDisclosure()
     const [isLoadingMore, setLoadingMoreState] = useState(false)
     const [sortOpen, setSortOpen] = useState(false)
+    const [quickView, setQuickViewState] = useState();
+    const [isQuickViewLoading, setQuickViewLoading] = useState(false);
+    const basket = useBasket()
     const {formatMessage} = useIntl()
     const navigate = useNavigation()
     const history = useHistory()
@@ -273,6 +278,40 @@ const ProductList = (props) => {
         })
     }
 
+    const handleQuickViewOpening = async (productID) => {
+        setQuickViewLoading(true)
+        try {
+            const quickViewProduct = await api.shopperProducts.getProduct({
+                parameters: {
+                    id: productID,
+                    allImages: true
+                }
+            })
+            setQuickViewState(quickViewProduct);
+        } catch(error){
+            console.error('error', error)
+        }
+        setQuickViewLoading(false)
+    }
+
+    const handleAddToCart = async (productSelectionValues) => {
+        try {
+            const productItems = productSelectionValues.map(({variant, quantity}) => ({
+                productId: variant.productId,
+                price: variant.price,
+                quantity
+            }))
+
+            await basket.addItemToBasket(productItems)
+
+            // If the items were sucessfully added, set the return value to be used
+            // by the add to cart modal.
+            return productSelectionValues
+        } catch (error) {
+            console.error('error', error)
+        }
+    }
+
     // Clears all filters
     const resetFilters = () => {
         navigate(window.location.pathname)
@@ -438,6 +477,7 @@ const ProductList = (props) => {
                                                   key={productSearchItem.productId}
                                                   product={productSearchItem}
                                                   enableFavourite={true}
+                                                  openQuickView={handleQuickViewOpening}
                                                   isFavourite={isInWishlist}
                                                   onClick={() => {
                                                       if (searchQuery) {
@@ -502,6 +542,16 @@ const ProductList = (props) => {
                     </Grid>
                 </>
             )}
+
+            {isQuickViewLoading && <LoadingSpinner />}
+            {quickView && <ProductViewModal
+                isOpen={!!quickView}
+                onOpen={() => {}}
+                onClose={() => setQuickViewState(null)}
+                product={quickView}
+                addToCart={(variant, quantity) => handleAddToCart([{product: quickView, variant, quantity}])}
+            />}
+
             <Modal
                 isOpen={isOpen}
                 onClose={onClose}
